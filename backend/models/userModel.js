@@ -8,13 +8,16 @@ const usersSchema = new mongoose.Schema({
         unique: true
     },
     userEmail: {
-        type: String,
-        required: true,
-        unique: true
+        type: String
     },
     userName: {
         type: String,
         required: true
+    },
+    isDetailSetup: {
+        type: Boolean,
+        required: true,
+        default: false
     }
 }, {
     timestamps: true  // Automatically add createdAt and updatedAt fields
@@ -27,7 +30,7 @@ const usersAddressSchema = new mongoose.Schema({
     userMobNumber: {
         type: String,
         required: true
-    },
+    }, 
     addressID: {
         type: String,
         unique: true

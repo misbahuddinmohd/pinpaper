@@ -427,13 +427,18 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useAlert } from '../contexts/AlertContext';
-import { MapPin, FileText } from 'lucide-react';
+import { useCart } from '../contexts/CartContext';
+import { MapPin } from 'lucide-react';
+import { useLoading } from '../contexts/LoadingContext';
+import Api from '../Api';
 
 const DeliveryPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { showAlert } = useAlert();
-  const { user, fetchUserAddress } = useUser();
+  const { address } = useUser();
+  const { setCartItems } = useCart();
+  const { showLoading, hideLoading } = useLoading();
 
   const { orderData } = location.state || {};
   const { items: cartItems = [], totalPrice: initialTotalPrice = 0 } = orderData || {};
@@ -463,16 +468,28 @@ const DeliveryPage = () => {
     console.log(orderData);
   }, [orderData])
 
+  // useEffect(() => {
+  //   const fetchAddresses = async () => {
+  //     const userAddresses = await fetchUserAddress();
+  //     setAddresses(userAddresses);
+  //     if (userAddresses.length > 0) {
+  //       setSelectedAddress(userAddresses[0]); // Default to the first address
+  //     }
+  //   };
+  //   fetchAddresses();
+  // }, [fetchUserAddress]);
+
   useEffect(() => {
     const fetchAddresses = async () => {
-      const userAddresses = await fetchUserAddress();
-      setAddresses(userAddresses);
-      if (userAddresses.length > 0) {
-        setSelectedAddress(userAddresses[0]); // Default to the first address
+      if(address) {
+        setAddresses(address);
+        if (address.length > 0) {
+          setSelectedAddress(address[0]); // Default to the first address
+        }
       }
     };
     fetchAddresses();
-  }, [fetchUserAddress]);
+  }, [address]);
 
   useEffect(() => {
     if (selectedDeliveryOption) {
@@ -481,7 +498,7 @@ const DeliveryPage = () => {
   }, [selectedDeliveryOption, initialTotalPrice]);
 
   const handleAddOrEditAddress = () => {
-    navigate('/account/address', { state: { returnTo: '/delivery' } });
+    navigate('/account/addEditAddress', { state: { returnTo: '/delivery' } });
   };
 
   const handleDeliveryOptionChange = (option) => {
@@ -500,6 +517,7 @@ const DeliveryPage = () => {
     }
 
     setLoading(true);
+    showLoading("Booking Order");
 
     // Prepare the payload
     const payload = {
@@ -509,22 +527,35 @@ const DeliveryPage = () => {
       selectedAddress,
       deliveryOption: selectedDeliveryOption,
     };
-    console.log('payload: ',payload);
-    
+    console.log('payload: ', payload);
+
     try {
-      const response = await fetch(`${process.env.REACT_APP_BASEURL}/api/v1/orders/submitOrder`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      // const response = await fetch(`${process.env.REACT_APP_BASEURL}/api/v1/orders/submitOrder`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify(payload),
+      // });
 
-      if (response.ok) {
-        const data = await response.json();
+      const response = await Api.post(`/api/v1/orders/submitOrder`, payload);
+
+      if (response.status === 200) {
+        // const data = await response.json();
+        const data = await response.data;
         console.log("Order Submitted Successfully:", data);
+        const orderData = data.data;
+        
+        
+        // showAlert('The order is submitted. Payment Gateway is yet to be integrated. You can see your order in Orders page', 'info', 6000)
+        
+        // clear cartitems at client
+        setCartItems([]);
 
+        hideLoading();
+        
         // next navigation
+        navigate('/orderSuccess', { state: {orderData} });
         // navigate('/order-success', { state: { orderId: data.orderId } });
       } else {
         console.error("Order Submission Failed:", response.statusText);
